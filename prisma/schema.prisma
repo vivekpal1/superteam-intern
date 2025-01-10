@@ -1,0 +1,106 @@
+// prisma/schema.prisma
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// Add vector extension for similarity search
+extension vector WITH (
+    vector_norm = "l2_norm",
+    vector_dim = 1536
+)
+
+model Document {
+    id          String       @id @default(cuid())
+    content     String
+    embedding   Unsupported("vector(1536)")  // Store as vector type
+    metadata    Json
+    type        String       // 'faq', 'guide', 'policy', etc.
+    status      String       @default("active")
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+    uploadedBy  String       // Admin who uploaded the document
+
+    @@index([embedding(type: vector)])  // Vector similarity index
+}
+
+model Member {
+    id            String         @id @default(cuid())
+    name          String
+    skills        String[]
+    experience    String
+    projects      Project[]      // Relation to projects
+    bio           String
+    twitterHandle String?
+    githubHandle  String?
+    contact       String
+    achievements  Achievement[]  // Relation to achievements
+    contributions Contribution[] // Relation to contributions
+    createdAt     DateTime       @default(now())
+    updatedAt     DateTime       @updatedAt
+}
+
+model Project {
+    id          String   @id @default(cuid())
+    name        String
+    type        String   // Project type/category
+    description String
+    skills      String[] // Required skills
+    member      Member   @relation(fields: [memberId], references: [id])
+    memberId    String
+    startDate   DateTime
+    endDate     DateTime?
+    status      String
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+}
+
+model Achievement {
+    id          String   @id @default(cuid())
+    title       String
+    description String
+    date        DateTime
+    member      Member   @relation(fields: [memberId], references: [id])
+    memberId    String
+    type        String   // Achievement type
+    proof       String?  // URL or other verification
+    createdAt   DateTime @default(now())
+}
+
+model Contribution {
+    id          String   @id @default(cuid())
+    description String
+    date        DateTime
+    member      Member   @relation(fields: [memberId], references: [id])
+    memberId    String
+    type        String   // Contribution type
+    url         String?  // Link to contribution
+    createdAt   DateTime @default(now())
+}
+
+model Tweet {
+    id           String    @id @default(cuid())
+    content      String
+    status       String    @default("draft")
+    authorId     String
+    scheduledFor DateTime?
+    postedAt     DateTime?
+    twitterId    String?   // ID from Twitter after posting
+    metadata     Json      // Store suggestions, versions, etc.
+    analytics    Json?     // Store engagement metrics
+    createdAt    DateTime  @default(now())
+    updatedAt    DateTime  @updatedAt
+}
+
+model Conversation {
+    id        String   @id @default(cuid())
+    userId    String
+    messages  Json[]   // Store conversation history
+    metadata  Json?    // Store context, intent, etc.
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
