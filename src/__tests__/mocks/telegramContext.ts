@@ -9,7 +9,6 @@ export class MockContext implements Partial<Context> {
     public telegram: any;
 
     constructor() {
-        // Mock telegram API methods
         this.telegram = {
             getFile: jest.fn().mockResolvedValue({
                 file_id: 'test-file-id',
