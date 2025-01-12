@@ -4,6 +4,7 @@ import { VectorStore } from '../../agent/core/rag/vectorStore.js';
 import { ModelSelector } from '../../agent/core/llm/modelSelector.js';
 import { PrismaClient } from '@prisma/client';
 import RateLimit from 'express-rate-limit';
+import { RateLimiter } from '../../utils/rateLimiter.js';
 
 interface QueryMetrics {
     confidence: number;
@@ -12,11 +13,11 @@ interface QueryMetrics {
 }
 
 export class KnowledgeHandler {
+    private rateLimiter: RateLimiter;
     private vectorStore: VectorStore;
     private model: ModelSelector;
     private prisma: PrismaClient;
     private adminIds: string[];
-    private rateLimiter: RateLimit;
     private maxFileSize = 10 * 1024 * 1024; // 10MB
     private allowedFileTypes = ['pdf', 'docx', 'txt'];
 
@@ -26,11 +27,7 @@ export class KnowledgeHandler {
         this.prisma = new PrismaClient();
         this.adminIds = adminIds;
 
-        this.rateLimiter = RateLimit({
-            windowMs: 60 * 1000,
-            max: 20,
-            message: 'Too many requests, please try again later.'
-        });
+        this.rateLimiter = new RateLimiter();
     }
 
     async handleDocument(ctx: Context): Promise<void> {
@@ -155,9 +152,8 @@ export class KnowledgeHandler {
     }
 
     private async checkRateLimit(ctx: Context): Promise<boolean> {
-        return new Promise((resolve) => {
-            this.rateLimiter(ctx as any, {} as any, () => resolve(true));
-        });
+        const userId = ctx.from?.id.toString() || 'anonymous';
+        return this.rateLimiter.checkLimit(userId);
     }
 
     private isValidQuery(query: string): boolean {

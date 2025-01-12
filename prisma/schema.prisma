@@ -1,47 +1,43 @@
 // prisma/schema.prisma
 generator client {
-    provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
-// Add vector extension for similarity search
-extension vector WITH (
-    vector_norm = "l2_norm",
-    vector_dim = 1536
-)
-
 model Document {
-    id          String       @id @default(cuid())
-    content     String
-    embedding   Unsupported("vector(1536)")  // Store as vector type
-    metadata    Json
-    type        String       // 'faq', 'guide', 'policy', etc.
-    status      String       @default("active")
-    createdAt   DateTime     @default(now())
-    updatedAt   DateTime     @updatedAt
-    uploadedBy  String       // Admin who uploaded the document
-
-    @@index([embedding(type: vector)])  // Vector similarity index
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  embedding Unsupported("vector(1536)") 
+  metadata  Json
+  type      String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  uploadedBy String
 }
 
 model Member {
-    id            String         @id @default(cuid())
-    name          String
-    skills        String[]
-    experience    String
-    projects      Project[]      // Relation to projects
-    bio           String
-    twitterHandle String?
-    githubHandle  String?
-    contact       String
-    achievements  Achievement[]  // Relation to achievements
-    contributions Contribution[] // Relation to contributions
-    createdAt     DateTime       @default(now())
-    updatedAt     DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  name          String
+  skills        String[]
+  experience    String
+  bio           String
+  twitterHandle String?
+  githubHandle  String?
+  contact       String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Add these relation fields
+  projects      Project[]      // One member can have many projects
+  achievements  Achievement[]  // One member can have many achievements
+  contributions Contribution[] // One member can have many contributions
 }
 
 model Project {
@@ -83,17 +79,17 @@ model Contribution {
 }
 
 model Tweet {
-    id           String    @id @default(cuid())
-    content      String
-    status       String    @default("draft")
-    authorId     String
-    scheduledFor DateTime?
-    postedAt     DateTime?
-    twitterId    String?   // ID from Twitter after posting
-    metadata     Json      // Store suggestions, versions, etc.
-    analytics    Json?     // Store engagement metrics
-    createdAt    DateTime  @default(now())
-    updatedAt    DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  content      String
+  status       String    @default("draft")
+  authorId     String
+  scheduledFor DateTime?
+  postedAt     DateTime?
+  twitterId    String?
+  metadata     Json
+  analytics    Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model Conversation {

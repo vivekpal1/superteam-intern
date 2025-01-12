@@ -1,6 +1,6 @@
 // src/agent/core/llm/modelSelector.ts
-import { LocalLLM } from './localLLM';
-import { CloudLLM } from './cloudLLM';
+import { LocalLLM } from './localLLM.js';
+import { CloudLLM } from './cloudLLM.js';
 
 export class ModelSelector {
     private localLLM: LocalLLM;

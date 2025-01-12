@@ -9,28 +9,23 @@ async function main() {
     try {
         console.log('Starting SuperteamVN Assistant...');
 
-        // Initialize components
         const prisma = new PrismaClient();
-        const model = new ModelSelector(true); // Use local LLM
+        const model = new ModelSelector(true);
         
         console.log('Initializing services...');
         
-        // Initialize services
         await prisma.$connect();
         console.log('Database connected successfully');
 
         await model.initialize();
         console.log('AI model initialized successfully');
 
-        // Initialize Telegram bot
         const bot = new SuperteamBot();
         await bot.start();
         console.log('Bot started successfully');
 
-        // Setup monitoring
         setupMonitoring(prisma);
 
-        // Handle graceful shutdown
         setupShutdown(bot, prisma);
 
     } catch (error) {
@@ -41,7 +36,6 @@ async function main() {
 }
 
 function setupMonitoring(prisma: PrismaClient) {
-    // Monitor database connection
     setInterval(async () => {
         try {
             await prisma.$queryRaw`SELECT 1`;
@@ -51,7 +45,6 @@ function setupMonitoring(prisma: PrismaClient) {
         }
     }, 60000); // Check every minute
 
-    // Monitor memory usage
     setInterval(() => {
         const used = process.memoryUsage();
         console.log('Memory usage:', {
@@ -89,7 +82,6 @@ async function cleanup() {
     }
 }
 
-// Global error handlers
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     cleanup().then(() => process.exit(1));
@@ -100,7 +92,6 @@ process.on('unhandledRejection', (error) => {
     cleanup().then(() => process.exit(1));
 });
 
-// Start the application
 main().catch(async (error) => {
     console.error('Fatal error:', error);
     await cleanup();
