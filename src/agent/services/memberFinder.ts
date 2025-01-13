@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { ModelSelector } from '../core/llm/modelSelector.js';
 import { VectorStore } from '../core/rag/vectorStore.js';
+import { Member, Project, Contribution } from '../../types/prisma-types.js';
 
 // Define interfaces to improve type safety
 interface MemberSearchQuery {
@@ -12,7 +13,7 @@ interface MemberSearchQuery {
 }
 
 interface MemberMatch {
-    member: Member;  // Using the Member type from Prisma
+    member: Member;
     matchScore: number;
     matchReason: string[];
 }

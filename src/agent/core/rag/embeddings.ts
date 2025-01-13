@@ -1,23 +1,18 @@
 // src/agent/core/rag/embeddings.ts
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { HuggingFaceTransformers } from "langchain/embeddings/hf";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings";
 
 export class EmbeddingGenerator {
     private openAIEmbeddings: OpenAIEmbeddings;
-    private localEmbeddings: HuggingFaceTransformers;
-    private useLocal: boolean;
+    private localEmbeddings: HuggingFaceInferenceEmbeddings;
+    private readonly useLocal: boolean;
 
     constructor(useLocal = true) {
         this.useLocal = useLocal;
-        
-        this.localEmbeddings = new HuggingFaceTransformers({
-            modelName: "sentence-transformers/all-MiniLM-L6-v2",
-            maxLength: 512
+        this.localEmbeddings = new HuggingFaceInferenceEmbeddings({
+            model: "sentence-transformers/all-MiniLM-L6-v2"
         });
-
-        this.openAIEmbeddings = new OpenAIEmbeddings({
-            modelName: "text-embedding-3-small"
-        });
+        this.openAIEmbeddings = new OpenAIEmbeddings();
     }
 
     async generateEmbedding(text: string): Promise<number[]> {

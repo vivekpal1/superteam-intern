@@ -1,6 +1,6 @@
 // src/telegram/bot.ts
 import { Telegraf, Context } from 'telegraf';
-import { Message } from 'telegraf/types';
+import { Message, Update } from 'telegraf/types';
 import { config } from '../config/index.js';
 import { PrismaClient } from '@prisma/client';
 import { KnowledgeHandler } from './handlers/knowledgeHandler.js';
@@ -19,7 +19,7 @@ interface UserState {
 }
 
 export class SuperteamBot {
-    private bot: Telegraf;
+    private bot: Telegraf<Context>;
     private prisma: PrismaClient;
     private llm: CloudLLM;
     private knowledgeHandler: KnowledgeHandler;
@@ -33,10 +33,8 @@ export class SuperteamBot {
     private botWalletAddress?: string;
 
     constructor() {
-        // Validate bot token
-        if (!this.isValidBotToken(config.TELEGRAM_BOT_TOKEN)) {
-            throw new Error('Invalid Telegram bot token format');
-        }
+        this.bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
+        this.prisma = new PrismaClient();
 
         // Initialize core services
         this.bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
@@ -51,7 +49,6 @@ export class SuperteamBot {
         this.twitterService = new TwitterService();
         this.walletService = new WalletService();
 
-        // Initialize state management
         this.userStates = new Map();
         this.adminIds = new Set([/* Add admin Telegram IDs */]);
 
@@ -61,21 +58,18 @@ export class SuperteamBot {
         this.setupMessageHandlers();
     }
 
-    // Validation helper for bot token
     private isValidBotToken(token: string): boolean {
         return /^\d+:[A-Za-z0-9_-]{35,}$/.test(token);
     }
 
     private setupMiddleware(): void {
-        // Request logging middleware
-        this.bot.use(async (ctx, next) => {
+        this.bot.use(async (ctx: Context, next: () => Promise<void>) => {
             const start = Date.now();
             await next();
             const ms = Date.now() - start;
             console.log(`[${ctx.from?.id}] ${ctx.updateType}: ${ms}ms`);
         });
 
-        // User state management middleware
         this.bot.use(async (ctx, next) => {
             if (!ctx.from) return next();
             
@@ -86,7 +80,6 @@ export class SuperteamBot {
             await next();
         });
 
-        // Error handling middleware
         this.bot.use(async (ctx, next) => {
             try {
                 await next();
@@ -95,30 +88,55 @@ export class SuperteamBot {
                 await ctx.reply('An error occurred while processing your request. Please try again.');
             }
         });
+
+        this.bot.on('text', async (ctx: Context) => {
+            if (!ctx.message || !('text' in ctx.message)) {
+                return;
+            }
+            const text = ctx.message.text;
+        });
     }
 
     private setupCommandHandlers(): void {
-        // Start command
         this.bot.command('start', this.handleStart.bind(this));
         
-        // Help command
         this.bot.command('help', this.handleHelp.bind(this));
         
-        // Find members command
         this.bot.command('find', this.handleFind.bind(this));
         
-        // Tweet command
         this.bot.command('tweet', this.handleTweetCommand.bind(this));
         
-        // Upload document command (admin only)
         this.bot.command('upload', this.handleUploadCommand.bind(this));
         
-        // Events command
         this.bot.command('events', this.handleEvents.bind(this));
         
-        // Admin commands
         this.bot.command('approve', this.handleApprove.bind(this));
         this.bot.command('stats', this.handleStats.bind(this));
+    }
+
+    private async handleApprove(ctx: Context): Promise<void> {
+        const messageId = ctx.message?.text?.split(' ')[1];
+        if (!messageId) {
+            await ctx.reply('Please provide a message ID to approve.');
+            return;
+        }
+        
+        await ctx.reply(`Message ${messageId} approved.`);
+    }
+
+    private async handleMessage(ctx: Context) {
+        if ('text' in ctx.message!) {
+            const messageText = ctx.message.text;
+        }
+    }
+
+    private async handleStats(ctx: Context): Promise<void> {
+        const stats = await this.getStats();
+        await ctx.reply(stats);
+    }
+
+    private async getStats(): Promise<string> {
+        return 'Stats will be implemented soon.';
     }
 
     private async handleStart(ctx: Context): Promise<void> {

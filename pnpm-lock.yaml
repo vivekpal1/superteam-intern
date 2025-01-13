@@ -13,13 +13,16 @@ importers:
         version: 0.33.1(encoding@0.1.13)
       '@langchain/anthropic':
         specifier: ^0.3.11
-        version: 0.3.11(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
+        version: 0.3.11(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@langchain/community':
         specifier: ^0.3.24
-        version: 0.3.24(o7zaaen2ojd5mgbtkar6wc446u)
+        version: 0.3.24(tdhmsrfyi46srmgaobphjvcyxa)
+      '@langchain/core':
+        specifier: ^0.3.29
+        version: 0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
       '@langchain/openai':
         specifier: ^0.3.16
-        version: 0.3.16(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
+        version: 0.3.16(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       '@prisma/client':
         specifier: ^6.1.0
         version: 6.1.0(prisma@6.1.0)
@@ -62,6 +65,9 @@ importers:
       dotenv:
         specifier: ^16.4.7
         version: 16.4.7
+      embeddings:
+        specifier: link:@langchain/community/embeddings
+        version: link:@langchain/community/embeddings
       express-rate-limit:
         specifier: ^7.5.0
         version: 7.5.0(express@4.21.2)
@@ -70,7 +76,7 @@ importers:
         version: 1.4.1(arweave@1.15.5)(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.3)(utf-8-validate@5.0.10)
       langchain:
         specifier: ^0.3.10
-        version: 0.3.10(@langchain/anthropic@0.3.11(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13))(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
+        version: 0.3.10(@langchain/anthropic@0.3.11(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13))(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
       llamaindex:
         specifier: ^0.8.30
         version: 0.8.30(@aws-sdk/client-sts@3.723.0)(@aws-sdk/credential-providers@3.723.0(@aws-sdk/client-sso-oidc@3.723.0(@aws-sdk/client-sts@3.723.0)))(@huggingface/transformers@3.2.4)(bufferutil@4.0.9)(encoding@0.1.13)(tree-sitter@0.22.4)(typescript@5.7.3)(utf-8-validate@5.0.10)(web-tree-sitter@0.24.6)
@@ -1303,8 +1309,8 @@ packages:
       youtubei.js:
         optional: true
 
-  '@langchain/core@0.3.27':
-    resolution: {integrity: sha512-jtJKbJWB1NPU1YvtrExOB2rumvUFgkJwlWGxyjSIV9A6zcLVmUbcZGV8fCSuXgl5bbzOIQLJ1xcLYQmbW9TkTg==}
+  '@langchain/core@0.3.29':
+    resolution: {integrity: sha512-LGjJq/UV43GnEzBpO2NWelIlzsAWoci+FEqofYqDE+F6O3EvTrSyma27NXs8eurM8MqWxjeL0t4RCmCSlJs2RQ==}
     engines: {node: '>=18'}
 
   '@langchain/openai@0.3.16':
@@ -7935,28 +7941,28 @@ snapshots:
 
   '@kwsites/promise-deferred@1.1.1': {}
 
-  '@langchain/anthropic@0.3.11(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)':
+  '@langchain/anthropic@0.3.11(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)':
     dependencies:
       '@anthropic-ai/sdk': 0.32.1(encoding@0.1.13)
-      '@langchain/core': 0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
+      '@langchain/core': 0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
       fast-xml-parser: 4.5.1
       zod: 3.24.1
       zod-to-json-schema: 3.24.1(zod@3.24.1)
     transitivePeerDependencies:
       - encoding
 
-  '@langchain/community@0.3.24(o7zaaen2ojd5mgbtkar6wc446u)':
+  '@langchain/community@0.3.24(tdhmsrfyi46srmgaobphjvcyxa)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.49.1)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.4.7)(encoding@0.1.13)(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))(utf-8-validate@5.0.10)(zod@3.24.1)
       '@ibm-cloud/watsonx-ai': 1.3.1
-      '@langchain/core': 0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
-      '@langchain/openai': 0.3.16(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
+      '@langchain/core': 0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
+      '@langchain/openai': 0.3.16(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       binary-extensions: 2.3.0
       expr-eval: 2.0.2
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.1.1
       js-yaml: 4.1.0
-      langchain: 0.3.10(@langchain/anthropic@0.3.11(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13))(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
+      langchain: 0.3.10(@langchain/anthropic@0.3.11(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13))(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
       langsmith: 0.2.14(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
       openai: 4.78.0(encoding@0.1.13)(zod@3.24.1)
       uuid: 10.0.0
@@ -8005,7 +8011,7 @@ snapshots:
       - handlebars
       - peggy
 
-  '@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))':
+  '@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))':
     dependencies:
       '@cfworker/json-schema': 4.1.0
       ansi-styles: 5.2.0
@@ -8022,9 +8028,9 @@ snapshots:
     transitivePeerDependencies:
       - openai
 
-  '@langchain/openai@0.3.16(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)':
+  '@langchain/openai@0.3.16(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)':
     dependencies:
-      '@langchain/core': 0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
+      '@langchain/core': 0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
       js-tiktoken: 1.0.16
       openai: 4.78.0(encoding@0.1.13)(zod@3.24.1)
       zod: 3.24.1
@@ -8032,9 +8038,9 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@langchain/textsplitters@0.1.0(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))':
+  '@langchain/textsplitters@0.1.0(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))':
     dependencies:
-      '@langchain/core': 0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
+      '@langchain/core': 0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
       js-tiktoken: 1.0.16
 
   '@llamaindex/anthropic@0.0.28(@aws-crypto/sha256-js@5.2.0)(@huggingface/transformers@3.2.4)(encoding@0.1.13)(gpt-tokenizer@2.8.1)(js-tiktoken@1.0.16)(pathe@1.1.2)':
@@ -12312,11 +12318,11 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.10(@langchain/anthropic@0.3.11(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13))(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)):
+  langchain@0.3.10(@langchain/anthropic@0.3.11(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13))(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(axios@1.7.9)(encoding@0.1.13)(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)):
     dependencies:
-      '@langchain/core': 0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
-      '@langchain/openai': 0.3.16(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
-      '@langchain/textsplitters': 0.1.0(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))
+      '@langchain/core': 0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1))
+      '@langchain/openai': 0.3.16(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
+      '@langchain/textsplitters': 0.1.0(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))
       js-tiktoken: 1.0.16
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
@@ -12328,7 +12334,7 @@ snapshots:
       zod: 3.24.1
       zod-to-json-schema: 3.24.1(zod@3.24.1)
     optionalDependencies:
-      '@langchain/anthropic': 0.3.11(@langchain/core@0.3.27(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
+      '@langchain/anthropic': 0.3.11(@langchain/core@0.3.29(openai@4.78.0(encoding@0.1.13)(zod@3.24.1)))(encoding@0.1.13)
       axios: 1.7.9(debug@4.4.0)
     transitivePeerDependencies:
       - encoding

@@ -2,6 +2,7 @@
 import { VectorStore } from './vectorStore.js';
 import { EmbeddingGenerator } from './embeddings.js';
 import { PrismaClient } from '@prisma/client';
+import { Document, VectorSearchOptions } from '../../../types/vector-types.js';
 
 interface Document {
     id: string;
@@ -38,13 +39,16 @@ export class DocumentRetriever {
         try {
             const queryEmbedding = await this.embeddings.generateEmbedding(query);
 
-            const documents = await this.vectorStore.findSimilar(query, {
-                embedding: queryEmbedding,
+            const searchOptions: VectorSearchOptions = {
                 threshold: 0.7,
-                limit: 5
-            });
+                limit: 5,
+                embedding: queryEmbedding
+            };
 
-            const rankedDocs = await this.rerankeDocuments(documents, query);
+            const documents = await this.vectorStore.findSimilar(query, searchOptions);
+
+            const typedDocs = documents as Document[];
+            const rankedDocs = await this.rerankeDocuments(typedDocs, query);
 
             const confidence = this.calculateConfidence(rankedDocs);
 
