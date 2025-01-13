@@ -24,11 +24,13 @@ export class ModelSelector {
             if (this.useLocal) {
                 return await this.localLLM.generateResponse(prompt);
             }
-            return await this.cloudLLM.generateResponse(prompt);
+            const response = await this.cloudLLM.generateResponse(prompt);
+            return response.content;
         } catch (error) {
             if (this.useLocal) {
                 console.log('Falling back to cloud LLM...');
-                return await this.cloudLLM.generateResponse(prompt);
+                const fallbackResponse = await this.cloudLLM.generateResponse(prompt);
+                return fallbackResponse.content;
             }
             throw error;
         }

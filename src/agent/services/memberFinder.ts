@@ -1,8 +1,8 @@
-// src/agent/services/memberFinder.ts
 import { PrismaClient } from '@prisma/client';
 import { ModelSelector } from '../core/llm/modelSelector.js';
 import { VectorStore } from '../core/rag/vectorStore.js';
 
+// Define interfaces to improve type safety
 interface MemberSearchQuery {
     skills?: string[];
     experience?: string;
@@ -12,9 +12,20 @@ interface MemberSearchQuery {
 }
 
 interface MemberMatch {
-    member: any;
+    member: Member;  // Using the Member type from Prisma
     matchScore: number;
     matchReason: string[];
+}
+
+interface ProjectScore {
+    score: number;
+    reasons: string[];
+}
+
+// Helper types for explicit typing
+type SkillMatchResult = {
+    matches: string[];
+    score: number;
 }
 
 export class MemberFinder {
@@ -31,11 +42,8 @@ export class MemberFinder {
     async findMembers(query: string): Promise<MemberMatch[]> {
         try {
             const searchParams = await this.parseSearchQuery(query);
-            
             const members = await this.searchMembers(searchParams);
-            
             const rankedMatches = await this.rankMatches(members, searchParams);
-            
             return this.addMatchExplanations(rankedMatches, searchParams);
         } catch (error) {
             console.error('Error finding members:', error);
@@ -68,17 +76,15 @@ export class MemberFinder {
     }
 
     private async searchMembers(params: MemberSearchQuery) {
-        const skillsFilter = params.skills ? {
+        // Using proper Prisma types for filtering
+        const skillsFilter = params.skills?.length ? {
             skills: {
                 hasSome: params.skills
             }
         } : {};
 
         const experienceFilter = params.experience ? {
-            experience: {
-                contains: params.experience,
-                mode: 'insensitive'
-            }
+            experience: params.experience
         } : {};
 
         return this.prisma.member.findMany({
@@ -96,7 +102,7 @@ export class MemberFinder {
         });
     }
 
-    private async rankMatches(members: any[], params: MemberSearchQuery): Promise<MemberMatch[]> {
+    private async rankMatches(members: Member[], params: MemberSearchQuery): Promise<MemberMatch[]> {
         const weights = {
             skills: 0.4,
             experience: 0.2,
@@ -110,14 +116,11 @@ export class MemberFinder {
             const reasons: string[] = [];
     
             if (params.skills?.length) {
-                const skillMatches = params.skills.filter(skill => 
-                    member.skills.some(s => s.toLowerCase().includes(skill.toLowerCase()))
-                );
-                const skillScore = (skillMatches.length / params.skills.length) * weights.skills;
-                score += skillScore;
+                const skillMatch = this.calculateSkillMatch(member.skills, params.skills);
+                score += skillMatch.score * weights.skills;
                 
-                if (skillMatches.length > 0) {
-                    reasons.push(`Matches ${skillMatches.length} required skills: ${skillMatches.join(', ')}`);
+                if (skillMatch.matches.length > 0) {
+                    reasons.push(`Matches ${skillMatch.matches.length} required skills: ${skillMatch.matches.join(', ')}`);
                 }
             }
     
@@ -128,22 +131,14 @@ export class MemberFinder {
                     reasons.push(`Has relevant ${params.experience} experience`);
                 }
             }
-    
-            if (params.projectType && member.projects.length > 0) {
-                const projectScore = member.projects.reduce((acc, project) => {
-                    if (project.type.toLowerCase().includes(params.projectType!.toLowerCase())) {
-                        acc += 1;
-                    }
-                    return acc;
-                }, 0) / member.projects.length;
-                
-                score += projectScore * weights.projectMatch;
-                if (projectScore > 0) {
-                    reasons.push(`Has worked on ${params.projectType} projects`);
-                }
+
+            const projectScore = this.calculateProjectScore(member.projects, params.projectType);
+            score += projectScore.score * weights.projectMatch;
+            if (projectScore.score > 0) {
+                reasons.push(...projectScore.reasons);
             }
     
-            const recentActivityScore = this.calculateRecentActivityScore(member);
+            const recentActivityScore = this.calculateRecentActivityScore(member.contributions);
             score += recentActivityScore * weights.recentActivity;
             if (recentActivityScore > 0.5) {
                 reasons.push('Recently active in the community');
@@ -162,6 +157,17 @@ export class MemberFinder {
             };
         }).sort((a, b) => b.matchScore - a.matchScore);
     }
+
+    private calculateSkillMatch(memberSkills: string[], requiredSkills: string[]): SkillMatchResult {
+        const matches = requiredSkills.filter(skill => 
+            memberSkills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()))
+        );
+        
+        return {
+            matches,
+            score: matches.length / requiredSkills.length
+        };
+    }
     
     private calculateExperienceScore(memberExp: string, requiredExp: string): number {
         const expLevels = ['beginner', 'intermediate', 'advanced', 'expert'];
@@ -176,22 +182,38 @@ export class MemberFinder {
         return Math.max(0, 1 - (requiredLevel - memberLevel) * 0.3);
     }
     
-    private calculateRecentActivityScore(member: any): number {
+    private calculateProjectScore(projects: Project[], projectType?: string): ProjectScore {
+        if (!projectType || !projects.length) {
+            return { score: 0, reasons: [] };
+        }
+
+        const matchingProjects = projects.filter(project => 
+            project.type.toLowerCase().includes(projectType.toLowerCase())
+        );
+
+        return {
+            score: matchingProjects.length / projects.length,
+            reasons: matchingProjects.length > 0 ? 
+                [`Has worked on ${matchingProjects.length} ${projectType} projects`] : []
+        };
+    }
+
+    private calculateRecentActivityScore(contributions: Contribution[]): number {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
         
-        const recentContributions = member.contributions.filter(c => 
+        const recentContributions = contributions.filter(c => 
             new Date(c.date) > thirtyDaysAgo
         ).length;
         
-        const mediumContributions = member.contributions.filter(c => 
+        const mediumContributions = contributions.filter(c => 
             new Date(c.date) > ninetyDaysAgo
         ).length;
         
         return Math.min(1, (recentContributions * 0.7 + mediumContributions * 0.3) / 10);
     }
     
-    private calculateEngagementScore(member: any): number {
+    private calculateEngagementScore(member: Member): number {
         const totalContributions = member.contributions.length;
         const totalProjects = member.projects.length;
         const totalAchievements = member.achievements.length;
@@ -202,6 +224,7 @@ export class MemberFinder {
             (totalAchievements * 0.2)
         ) / 10);
     }
+
 
     private addMatchExplanations(matches: MemberMatch[], query: MemberSearchQuery): MemberMatch[] {
         return matches.map(match => ({
