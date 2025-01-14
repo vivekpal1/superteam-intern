@@ -1,32 +1,27 @@
+// src/telegram/handlers/knowledgeHandler.ts
 import { Context } from 'telegraf';
 import { Message } from 'telegraf/types';
 import { VectorStore } from '../../agent/core/rag/vectorStore.js';
 import { ModelSelector } from '../../agent/core/llm/modelSelector.js';
-import { PrismaClient } from '@prisma/client';
-import RateLimit from 'express-rate-limit';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { RateLimiter } from '../../utils/rateLimiter.js';
-
-interface QueryMetrics {
-    confidence: number;
-    sources: string[];
-    processingTime: number;
-}
+import { QueryMetrics, ErrorLogInput, ActivityLogInput } from '../../types/index.js';
+import { VectorDocument } from '../../types/vector-types.js';
 
 export class KnowledgeHandler {
     private rateLimiter: RateLimiter;
     private vectorStore: VectorStore;
     private model: ModelSelector;
     private prisma: PrismaClient;
-    private adminIds: string[];
-    private maxFileSize = 10 * 1024 * 1024; // 10MB
-    private allowedFileTypes = ['pdf', 'docx', 'txt'];
+    private adminIds: Set<string>;
+    private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
+    private readonly allowedFileTypes = new Set(['pdf', 'docx', 'txt']);
 
     constructor(adminIds: string[] = []) {
         this.vectorStore = new VectorStore();
         this.model = new ModelSelector(true);
         this.prisma = new PrismaClient();
-        this.adminIds = adminIds;
-
+        this.adminIds = new Set(adminIds);
         this.rateLimiter = new RateLimiter();
     }
 
@@ -37,7 +32,7 @@ export class KnowledgeHandler {
         }
 
         const userId = ctx.from?.id.toString();
-        if (!userId || !this.adminIds.includes(userId)) {
+        if (!userId || !this.adminIds.has(userId)) {
             await ctx.reply('Sorry, only admins can add documents to the knowledge base.');
             return;
         }
@@ -45,14 +40,15 @@ export class KnowledgeHandler {
         try {
             const doc = ctx.message.document;
             
-            if (doc.file_size > this.maxFileSize) {
+            // Safe check for file size
+            if (typeof doc.file_size !== 'number' || doc.file_size > this.maxFileSize) {
                 await ctx.reply(`File too large. Maximum size is ${this.maxFileSize / 1024 / 1024}MB`);
                 return;
             }
 
             const extension = doc.file_name?.split('.').pop()?.toLowerCase();
-            if (!extension || !this.allowedFileTypes.includes(extension)) {
-                await ctx.reply(`Unsupported file type. Allowed types: ${this.allowedFileTypes.join(', ')}`);
+            if (!extension || !this.allowedFileTypes.has(extension)) {
+                await ctx.reply(`Unsupported file type. Allowed types: ${Array.from(this.allowedFileTypes).join(', ')}`);
                 return;
             }
 
@@ -66,7 +62,7 @@ export class KnowledgeHandler {
                 return;
             }
 
-            const metadata = {
+            const metadata: Prisma.JsonValue = {
                 source: doc.file_name,
                 uploadedBy: userId,
                 uploadedAt: new Date().toISOString(),
@@ -78,16 +74,23 @@ export class KnowledgeHandler {
                 }
             };
 
-            await this.vectorStore.addDocument(content, metadata);
-
+            await this.vectorStore.addDocument(content, metadata as Record<string, any>);
             await ctx.reply('Document processed and added to knowledge base successfully!');
             
-            await this.logDocumentUpload(userId, metadata);
+            await this.logActivity({
+                type: 'document_upload',
+                userId,
+                metadata
+            });
         } catch (error) {
             console.error('Error processing document:', error);
-            await ctx.reply('Sorry, I encountered an error processing the document. Please try again or contact support.');
+            await ctx.reply('Sorry, I encountered an error processing the document. Please try again.');
             
-            await this.logError('document_processing', error, userId);
+            await this.logError({
+                type: 'document_processing',
+                error: error instanceof Error ? error.message : String(error),
+                userId
+            });
         }
     }
 
@@ -111,13 +114,13 @@ export class KnowledgeHandler {
             });
 
             if (relevantDocs.length === 0) {
-                await ctx.reply("I don't have enough information to answer that question confidently. You might want to try rephrasing your question or asking something else.");
+                await ctx.reply("I don't have enough information to answer that question confidently.");
                 return;
             }
 
             const confidence = this.calculateConfidence(relevantDocs);
             if (confidence < 0.6) {
-                await ctx.reply("I'm not confident enough to provide an accurate answer to this question. Could you please rephrase it or provide more context?");
+                await ctx.reply("I'm not confident enough to provide an accurate answer. Could you rephrase?");
                 return;
             }
 
@@ -128,40 +131,92 @@ export class KnowledgeHandler {
             
             metrics = {
                 confidence,
-                sources: relevantDocs.map(doc => doc.metadata.source),
+                sources: relevantDocs.map(doc => 
+                    doc.metadata?.source || 'Unknown'
+                ).filter(Boolean),
                 processingTime: Date.now() - startTime
             };
 
-            if (confidence > 0.8) {
-                const formattedResponse = this.formatResponse(response, metrics);
-                await ctx.reply(formattedResponse, { parse_mode: 'Markdown' });
-            } else {
-                await ctx.reply(response);
-            }
+            const formattedResponse = this.formatResponse(response, metrics);
+            await ctx.reply(formattedResponse, { parse_mode: 'Markdown' });
 
-            await this.logInteraction(ctx.message as Message, response, metrics);
+            await this.logActivity({
+                type: 'query',
+                userId: ctx.from?.id.toString() || 'anonymous',
+                metadata: {
+                    query,
+                    metrics,
+                    response: response.slice(0, 1000) // Truncate long responses
+                }
+            });
         } catch (error) {
             console.error('Error handling query:', error);
             await ctx.reply('Sorry, I encountered an error processing your query. Please try again.');
             
-            await this.logError('query_processing', error, ctx.from?.id.toString(), {
-                query,
-                metrics
+            await this.logError({
+                type: 'query_processing',
+                error: error instanceof Error ? error.message : String(error),
+                userId: ctx.from?.id.toString(),
+                metadata: {
+                    query,
+                    metrics
+                }
             });
         }
     }
 
     private async downloadAndProcessFile(filePath: string): Promise<string> {
-        // Implement file download and processing
-        return 'Processed content';
+        // Implementation would go here
+        // Should handle file download and processing
+        throw new Error('Not implemented');
     }
 
-    private cleanContent(content: string): string {
-        return content.trim().replace(/\s+/g, ' ');
+    private async logError(input: ErrorLogInput): Promise<void> {
+        try {
+            await this.prisma.errorLog.create({
+                data: {
+                    type: input.type,
+                    error: input.error,
+                    metadata: input.metadata || Prisma.JsonNull,
+                    timestamp: new Date()
+                }
+            });
+        } catch (error) {
+            console.error('Error logging error:', error);
+        }
     }
 
-    private async logInteraction(message: Message, response: string, metrics: any): Promise<void> {
-        // Implement logging
+    private async logActivity(input: ActivityLogInput): Promise<void> {
+        try {
+            await this.prisma.activityLog.create({
+                data: {
+                    type: input.type,
+                    metadata: input.metadata || Prisma.JsonNull,
+                    timestamp: new Date()
+                }
+            });
+        } catch (error) {
+            console.error('Error logging activity:', error);
+        }
+    }
+
+    private isValidContent(content: string): boolean {
+        return content.length >= 50 && content.length <= 1_000_000;
+    }
+
+    private isValidQuery(query: string): boolean {
+        return query.length >= 3 && query.length <= 500;
+    }
+
+    private calculateConfidence(docs: VectorDocument[]): number {
+        if (docs.length === 0) return 0;
+        
+        const avgSimilarity = docs.reduce((sum, doc) => 
+            sum + (doc.similarity || 0), 0) / docs.length;
+        
+        const coverageScore = Math.min(docs.length / 3, 1);
+        
+        return avgSimilarity * 0.7 + coverageScore * 0.3;
     }
 
     private async checkRateLimit(ctx: Context): Promise<boolean> {
@@ -169,40 +224,15 @@ export class KnowledgeHandler {
         return this.rateLimiter.checkLimit(userId);
     }
 
-    private isValidQuery(query: string): boolean {
-        return query.length >= 3 && query.length <= 500;
-    }
-
-    private isValidContent(content: string): boolean {
-        return content.length >= 50 && content.length <= 1000000;
-    }
-
-    private calculateConfidence(docs: any[]): number {
-        if (docs.length === 0) return 0;
-        
-        const avgSimilarity = docs.reduce((sum, doc) => sum + doc.similarity, 0) / docs.length;
-        
-        const sourceWeight = Math.min(docs.length / 3, 1);
-        
-        return avgSimilarity * sourceWeight;
-    }
-
-    private prepareContext(docs: any[]): string {
+    private prepareContext(docs: VectorDocument[]): string {
         return docs
             .map(doc => this.cleanContent(doc.content))
             .join('\n\n')
             .slice(0, 3000);
     }
 
-    private async buildPrompt(query: string, context: string): Promise<string> {
-        return `Context information is below:
-${context}
-
-Given the context information, answer the following question:
-${query}
-
-If you can't answer the question based on the context, say so. Do not make up information.
-Answer:`;
+    private cleanContent(content: string): string {
+        return content.trim().replace(/\s+/g, ' ');
     }
 
     private formatResponse(response: string, metrics: QueryMetrics): string {
@@ -217,26 +247,14 @@ Answer:`;
         return formatted;
     }
 
-    private async logError(type: string, error: any, userId?: string, metadata?: any) {
-        await this.prisma.errorLog.create({
-            data: {
-                type,
-                error: JSON.stringify(error),
-                userId,
-                metadata: metadata ? JSON.stringify(metadata) : null,
-                timestamp: new Date()
-            }
-        });
-    }
+    private async buildPrompt(query: string, context: string): Promise<string> {
+        return `Context information is below:
+${context}
 
-    private async logDocumentUpload(userId: string, metadata: any) {
-        await this.prisma.activityLog.create({
-            data: {
-                type: 'document_upload',
-                userId,
-                metadata: JSON.stringify(metadata),
-                timestamp: new Date()
-            }
-        });
+Given the context information, answer the following question:
+${query}
+
+If you can't answer the question based on the context, say so. Do not make up information.
+Answer:`;
     }
 }

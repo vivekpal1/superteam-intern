@@ -65,9 +65,6 @@ importers:
       dotenv:
         specifier: ^16.4.7
         version: 16.4.7
-      embeddings:
-        specifier: link:@langchain/community/embeddings
-        version: link:@langchain/community/embeddings
       express-rate-limit:
         specifier: ^7.5.0
         version: 7.5.0(express@4.21.2)

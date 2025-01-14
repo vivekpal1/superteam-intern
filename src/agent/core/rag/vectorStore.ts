@@ -1,6 +1,7 @@
 // src/agent/core/rag/vectorStore.ts
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { EmbeddingGenerator } from './embeddings.js';
+import { VectorDocument } from '../../../types/vector-types.js';
 
 export class VectorStore {
     private prisma: PrismaClient;
@@ -11,44 +12,95 @@ export class VectorStore {
         this.embeddings = new EmbeddingGenerator();
     }
 
-    async addDocument(content: string, metadata: Record<string, any> = {}) {
-        const embedding = await this.embeddings.generateEmbedding(content);
-
-        return this.prisma.document.create({
-            data: {
-                content,
-                embedding,
-                metadata: metadata
-            }
-        });
+    // Transform a Prisma document into our VectorDocument type
+    private transformToVectorDocument(doc: any): VectorDocument {
+        return {
+            id: doc.id,
+            content: doc.content,
+            embedding: Array.from(doc.embedding),
+            metadata: typeof doc.metadata === 'string' 
+                ? JSON.parse(doc.metadata) 
+                : doc.metadata,
+            similarity: doc.similarity,
+            type: doc.type,
+            status: doc.status
+        };
     }
 
-    async findSimilar(query: string, options = { threshold: 0.7, limit: 5 }) {
-        const queryEmbedding = await this.embeddings.generateEmbedding(query);
+    async addDocument(content: string, metadata: Record<string, any> = {}): Promise<VectorDocument> {
+        try {
+            const embedding = await this.embeddings.generateEmbedding(content);
+            
+            const document = await this.prisma.document.create({
+                data: {
+                    content,
+                    embedding: embedding as unknown as Prisma.JsonValue,
+                    metadata: metadata as Prisma.JsonValue,
+                    type: 'document',
+                    status: 'active'
+                }
+            });
 
-        const documents = await this.prisma.$queryRaw`
-            SELECT 
-                id,
-                content,
-                metadata,
-                1 - (embedding <=> ${queryEmbedding}::vector) as similarity
-            FROM "Document"
-            WHERE 1 - (embedding <=> ${queryEmbedding}::vector) > ${options.threshold}
-            ORDER BY similarity DESC
-            LIMIT ${options.limit}
-        `;
-
-        return documents;
+            return this.transformToVectorDocument(document);
+        } catch (error) {
+            console.error('Error adding document:', error);
+            throw error;
+        }
     }
 
-    async deleteDocument(id: string) {
-        return this.prisma.document.delete({
+    async findSimilar(query: string, options = { threshold: 0.7, limit: 5 }): Promise<VectorDocument[]> {
+        try {
+            const queryEmbedding = await this.embeddings.generateEmbedding(query);
+            
+            const documents = await this.prisma.$queryRaw`
+                SELECT 
+                    id,
+                    content,
+                    embedding,
+                    metadata,
+                    type,
+                    status,
+                    1 - (embedding <=> ${queryEmbedding}::vector) as similarity
+                FROM "Document"
+                WHERE 1 - (embedding <=> ${queryEmbedding}::vector) > ${options.threshold}
+                ORDER BY similarity DESC
+                LIMIT ${options.limit}
+            `;
+
+            return (documents as any[]).map(doc => this.transformToVectorDocument(doc));
+        } catch (error) {
+            console.error('Error finding similar documents:', error);
+            throw error;
+        }
+    }
+
+    async createDocument(content: string, data: { embedding: number[]; metadata: any }): Promise<VectorDocument> {
+        try {
+            const document = await this.prisma.document.create({
+                data: {
+                    content,
+                    embedding: data.embedding as unknown as Prisma.JsonValue,
+                    metadata: JSON.stringify(data.metadata),
+                    type: 'document',
+                    status: 'active'
+                }
+            });
+
+            return this.transformToVectorDocument(document);
+        } catch (error) {
+            console.error('Error creating document:', error);
+            throw error;
+        }
+    }
+
+    async deleteDocument(id: string): Promise<void> {
+        await this.prisma.document.delete({
             where: { id }
         });
     }
 
-    async searchByMetadata(metadataQuery: Record<string, any>) {
-        return this.prisma.document.findMany({
+    async searchByMetadata(metadataQuery: Record<string, any>): Promise<VectorDocument[]> {
+        const documents = await this.prisma.document.findMany({
             where: {
                 metadata: {
                     path: Object.keys(metadataQuery),
@@ -56,5 +108,7 @@ export class VectorStore {
                 }
             }
         });
+
+        return documents.map(doc => this.transformToVectorDocument(doc));
     }
 }

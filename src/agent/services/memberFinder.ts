@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { ModelSelector } from '../core/llm/modelSelector.js';
 import { VectorStore } from '../core/rag/vectorStore.js';
-import { Member, Project, Contribution } from '../../types/prisma-types.js';
+import { Member, Project, Contribution } from '../../types/index.js';
 
 // Define interfaces to improve type safety
 interface MemberSearchQuery {

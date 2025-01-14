@@ -1,19 +1,19 @@
 // src/agent/services/contentAdvisor.ts
-import { ModelSelector } from '../core/llm/modelSelector.js';
-import { PrismaClient } from '@prisma/client';
+import { ModelSelector } from "../core/llm/modelSelector.js";
+import { PrismaClient } from "@prisma/client";
 
 export class ContentAdvisor {
-    private model: ModelSelector;
-    private prisma: PrismaClient;
+  private model: ModelSelector;
+  private prisma: PrismaClient;
 
-    constructor() {
-        this.model = new ModelSelector(true); // Use local LLM
-        this.prisma = new PrismaClient();
-    }
+  constructor() {
+    this.model = new ModelSelector(true); // Use local LLM
+    this.prisma = new PrismaClient();
+  }
 
-    async improveTweet(content: string): Promise<string[]> {
-        try {
-            const prompt = `
+  async improveTweet(content: string): Promise<string[]> {
+    try {
+      const prompt = `
             Given this tweet draft:
             "${content}"
 
@@ -26,31 +26,34 @@ export class ContentAdvisor {
 
             Format each suggestion as a complete tweet.`;
 
-            const response = await this.model.generateResponse(prompt);
-            
-            const suggestions = response
-                .split('\n')
-                .filter(line => line.trim().length > 0)
-                .map(line => line.replace(/^\d+\.\s*/, '').trim())
-                .filter(line => line.length <= 280);
+      const response = await this.model.generateResponse(prompt);
 
-            await this.storeSuggestion(content, suggestions);
+      const suggestions = response
+        .split("\n")
+        .filter((line) => line.trim().length > 0)
+        .map((line) => line.replace(/^\d+\.\s*/, "").trim())
+        .filter((line) => line.length <= 280);
 
-            return suggestions;
-        } catch (error) {
-            console.error('Error improving tweet:', error);
-            throw error;
-        }
+      await this.storeSuggestion(content, suggestions);
+
+      return suggestions;
+    } catch (error) {
+      console.error("Error improving tweet:", error);
+      throw error;
     }
+  }
 
-    async generateTwitterThread(topic: string, points: string[]): Promise<string[]> {
-        try {
-            const prompt = `
+  async generateTwitterThread(
+    topic: string,
+    points: string[]
+  ): Promise<string[]> {
+    try {
+      const prompt = `
             Create a Twitter thread about:
             "${topic}"
 
             Key points to cover:
-            ${points.join('\n')}
+            ${points.join("\n")}
 
             Create a thread that:
             1. Starts with a strong hook
@@ -61,37 +64,37 @@ export class ContentAdvisor {
 
             Format as numbered tweets, each under 280 characters.`;
 
-            const response = await this.model.generateResponse(prompt);
-            
-            const tweets = response
-                .split('\n')
-                .filter(line => line.trim().length > 0)
-                .map(line => line.replace(/^\d+\.\s*/, '').trim())
-                .filter(line => line.length <= 280);
+      const response = await this.model.generateResponse(prompt);
 
-            return tweets;
-        } catch (error) {
-            console.error('Error generating thread:', error);
-            throw error;
-        }
-    }
+      const tweets = response
+        .split("\n")
+        .filter((line) => line.trim().length > 0)
+        .map((line) => line.replace(/^\d+\.\s*/, "").trim())
+        .filter((line) => line.length <= 280);
 
-    private async storeSuggestion(original: string, suggestions: string[]) {
-        await this.prisma.contentSuggestion.create({
-            data: {
-                originalContent: original,
-                suggestions,
-                type: 'tweet',
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                    platform: 'twitter'
-                }
-            }
-        });
+      return tweets;
+    } catch (error) {
+      console.error("Error generating thread:", error);
+      throw error;
     }
+  }
 
-    async analyzeTweetPerformance(tweetId: string) {
-        // tweet performance analysis
-        throw new Error('Not implemented');
-    }
+  private async storeSuggestion(original: string, suggestions: string[]) {
+    await this.prisma.contentSuggestion.create({
+      data: {
+        content: original,
+        suggestions: JSON.stringify(suggestions),
+        type: "tweet",
+        metadata: JSON.stringify({
+          timestamp: new Date().toISOString(),
+          platform: "twitter",
+        }),
+      },
+    });
+  }
+
+  async analyzeTweetPerformance(tweetId: string) {
+    // tweet performance analysis
+    throw new Error("Not implemented");
+  }
 }

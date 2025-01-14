@@ -11,7 +11,6 @@ import { TwitterService } from '../agent/services/twitterService.js';
 import { WalletService } from '../agent/services/walletService.js';
 import { CloudLLM } from '../agent/core/llm/cloudLLM.js';
 
-// Interface for managing user states in conversations
 interface UserState {
     waitingFor?: 'tweet' | 'document' | null;
     lastCommand?: string;
@@ -19,7 +18,8 @@ interface UserState {
 }
 
 export class SuperteamBot {
-    private bot: Telegraf<Context>;
+    private bot: Telegraf;
+    public botInfo?: any;
     private prisma: PrismaClient;
     private llm: CloudLLM;
     private knowledgeHandler: KnowledgeHandler;
@@ -36,12 +36,19 @@ export class SuperteamBot {
         this.bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
         this.prisma = new PrismaClient();
 
+        if (!config.TELEGRAM_BOT_TOKEN) {
+            throw new Error('TELEGRAM_BOT_TOKEN is not configured');
+        }
+        console.log('Creating Telegraf instance...');
+        this.bot = new Telegraf(config.TELEGRAM_BOT_TOKEN, {
+            handlerTimeout: 90_000,
+        });
+
         // Initialize core services
         this.bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
         this.prisma = new PrismaClient();
         this.llm = new CloudLLM();
         
-        // Initialize feature-specific services
         this.knowledgeHandler = new KnowledgeHandler();
         this.tweetManager = new TweetManager();
         this.contentAdvisor = new ContentAdvisor();
@@ -52,7 +59,6 @@ export class SuperteamBot {
         this.userStates = new Map();
         this.adminIds = new Set([/* Add admin Telegram IDs */]);
 
-        // Set up bot handlers
         this.setupMiddleware();
         this.setupCommandHandlers();
         this.setupMessageHandlers();
@@ -97,28 +103,12 @@ export class SuperteamBot {
         });
     }
 
-    private setupCommandHandlers(): void {
-        this.bot.command('start', this.handleStart.bind(this));
-        
-        this.bot.command('help', this.handleHelp.bind(this));
-        
-        this.bot.command('find', this.handleFind.bind(this));
-        
-        this.bot.command('tweet', this.handleTweetCommand.bind(this));
-        
-        this.bot.command('upload', this.handleUploadCommand.bind(this));
-        
-        this.bot.command('events', this.handleEvents.bind(this));
-        
-        this.bot.command('approve', this.handleApprove.bind(this));
-        this.bot.command('stats', this.handleStats.bind(this));
-    }
-
-    private async handleApprove(ctx: Context): Promise<void> {
-        const messageId = ctx.message?.text?.split(' ')[1];
+    private async handleApprove(ctx: Context) {
+        const messageText = ctx.message && 'text' in ctx.message ? ctx.message.text : undefined;
+        const messageId = messageText?.split(' ')[1];
         if (!messageId) {
-            await ctx.reply('Please provide a message ID to approve.');
-            return;
+          await ctx.reply('Please provide a message ID to approve.');
+          return;
         }
         
         await ctx.reply(`Message ${messageId} approved.`);
@@ -181,7 +171,12 @@ Need help? Just ask me anything!`;
     }
 
     private async handleFind(ctx: Context): Promise<void> {
-        const query = ctx.message?.text?.replace('/find', '').trim();
+        if (!ctx.message || !('text' in ctx.message)) {
+            await ctx.reply('Please provide search criteria.');
+            return;
+        }
+    
+        const query = ctx.message.text.replace('/find', '').trim();
         if (!query) {
             await ctx.reply('Please provide search criteria.\nExample: /find "rust developer"');
             return;
@@ -220,7 +215,12 @@ ${member.twitterHandle ? `🐦 Twitter: @${member.twitterHandle}` : ''}`;
     }
 
     private async handleTweetCommand(ctx: Context): Promise<void> {
-        const content = ctx.message?.text?.replace('/tweet', '').trim();
+        if (!ctx.message || !('text' in ctx.message)) {
+            await ctx.reply('Please provide tweet content.');
+            return;
+        }
+    
+        const content = ctx.message.text.replace('/tweet', '').trim();
         
         if (!content) {
             await ctx.reply('Please provide tweet content.\nExample: /tweet "Exciting news..."');
@@ -298,7 +298,6 @@ ${event.description}
     }
 
     private setupMessageHandlers(): void {
-        // Handle documents
         this.bot.on('document', async (ctx) => {
             const state = this.userStates.get(ctx.from!.id);
             if (state?.waitingFor === 'document') {
@@ -307,7 +306,6 @@ ${event.description}
             }
         });
 
-        // Handle text messages
         this.bot.on('text', async (ctx) => {
             if (ctx.message.text.startsWith('/')) return;
 
@@ -322,27 +320,118 @@ ${event.description}
 
     public async start(): Promise<void> {
         try {
-            console.log('Starting bot...');
+            console.log('Starting bot initialization...');
+            
+            await this.prisma.$connect();
+            console.log('Database connection established');
+
+            const botInfo = await this.bot.telegram.getMe();
+            console.log(`Bot info received: @${botInfo.username}`);
+
+            await this.setupCommandHandlers();
+
             await this.bot.launch();
-            console.log('Bot started successfully');
+            console.log(`Bot @${botInfo.username} is now running!`);
 
             process.once('SIGINT', () => this.stop('SIGINT'));
             process.once('SIGTERM', () => this.stop('SIGTERM'));
         } catch (error) {
-            console.error('Failed to start bot:', error);
+            console.error('Bot initialization failed:', error);
+            if (error instanceof Error) {
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
             throw error;
         }
     }
 
+    private setupShutdownHandlers(): void {
+        process.once('SIGINT', () => {
+            console.log('SIGINT signal received');
+            this.stop('SIGINT');
+        });
+        process.once('SIGTERM', () => {
+            console.log('SIGTERM signal received');
+            this.stop('SIGTERM');
+        });
+    }
+
+    private async testDatabaseConnection(): Promise<void> {
+        try {
+            await this.prisma.$queryRaw`SELECT 1`;
+            console.log('Database connection test successful');
+        } catch (error) {
+            console.error('Database connection test failed:', error);
+            throw error;
+        }
+    }
+
+    private async setupCommandHandlers(): Promise<void> {
+        try {
+            console.log('Setting up command handlers...');
+
+            this.bot.command('ping', async (ctx) => {
+                await ctx.reply('pong');
+            });
+
+            this.bot.command('start', async (ctx) => {
+                try {
+                    await this.handleStart(ctx);
+                } catch (error) {
+                    console.error('Error in start command:', error);
+                    await ctx.reply('Sorry, there was an error processing your start command.');
+                }
+            });
+
+            this.bot.command('help', this.wrapCommandHandler(this.handleHelp));
+            this.bot.command('find', this.wrapCommandHandler(this.handleFind));
+            this.bot.command('tweet', this.wrapCommandHandler(this.handleTweetCommand));
+            this.bot.command('upload', this.wrapCommandHandler(this.handleUploadCommand));
+            this.bot.command('events', this.wrapCommandHandler(this.handleEvents));
+            this.bot.command('approve', this.wrapCommandHandler(this.handleApprove));
+            this.bot.command('stats', this.wrapCommandHandler(this.handleStats));
+
+            this.bot.catch(async (error: any, ctx: Context) => {
+                console.error('Unhandled bot error:', error);
+                try {
+                    await ctx.reply('An unexpected error occurred. Please try again later.');
+                } catch (replyError) {
+                    console.error('Failed to send error message:', replyError);
+                }
+            });
+
+            console.log('Command handlers setup completed successfully');
+        } catch (error) {
+            console.error('Failed to setup command handlers:', error);
+            throw error;
+        }
+    }
+
+    private wrapCommandHandler(handler: (ctx: Context) => Promise<void>) {
+        return async (ctx: Context) => {
+            try {
+                await handler.call(this, ctx);
+            } catch (error) {
+                console.error(`Error in ${handler.name}:`, error);
+                try {
+                    await ctx.reply('Sorry, there was an error processing your command.');
+                } catch (replyError) {
+                    console.error('Failed to send error message:', replyError);
+                }
+            }
+        };
+    }
+
     public async stop(signal: string): Promise<void> {
-        console.log(`Received ${signal}, shutting down gracefully...`);
-        
+        console.log(`Received ${signal}, stopping bot...`);
         try {
             await this.bot.stop();
             await this.prisma.$disconnect();
-            console.log('Shutdown complete');
+            console.log('Bot stopped successfully');
         } catch (error) {
-            console.error('Error during shutdown:', error);
+            console.error('Error stopping bot:', error);
             throw error;
         }
     }

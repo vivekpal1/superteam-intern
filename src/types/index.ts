@@ -1,27 +1,37 @@
 // src/types/index.ts
+import { Prisma } from '@prisma/client';
+
+// Core document types
 export interface Document {
     id: string;
     content: string;
     embedding: number[];
     metadata: Record<string, any>;
+    similarity?: number;
+    type?: string;
+    status?: string;
     createdAt: Date;
     updatedAt: Date;
-  }
-  
-  export interface Member {
+}
+
+// Member-related types
+export interface Member {
     id: string;
     name: string;
     skills: string[];
     experience: string;
+    bio: string;
+    twitterHandle?: string;
+    githubHandle?: string;
+    contact: string;
     projects: Project[];
     achievements: Achievement[];
     contributions: Contribution[];
-    contact: string;
-    twitterHandle?: string;
-    githubHandle?: string;
-  }
+    createdAt: Date;
+    updatedAt: Date;
+}
 
-  export interface Project {
+export interface Project {
     id: string;
     name: string;
     type: string;
@@ -54,4 +64,32 @@ export interface Contribution {
     type: string;
     url?: string;
     createdAt: Date;
+}
+
+// Log-related types
+export interface ErrorLogInput {
+    type: string;
+    error: string;
+    userId?: string;
+    metadata?: Prisma.JsonValue;
+}
+
+export interface ActivityLogInput {
+    type: string;
+    userId: string;
+    metadata?: Prisma.JsonValue;
+}
+
+// Query-related types
+export interface QueryMetrics {
+    confidence: number;
+    sources: string[];
+    processingTime: number;
+}
+
+export interface SearchQuery {
+    text: string;
+    metadata?: Record<string, any>;
+    threshold?: number;
+    limit?: number;
 }

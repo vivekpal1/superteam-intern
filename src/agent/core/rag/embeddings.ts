@@ -1,6 +1,6 @@
 // src/agent/core/rag/embeddings.ts
 import { OpenAIEmbeddings } from "@langchain/openai";
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings";
+import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 
 export class EmbeddingGenerator {
     private openAIEmbeddings: OpenAIEmbeddings;

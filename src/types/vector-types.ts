@@ -5,10 +5,10 @@ export interface VectorSearchOptions {
     embedding?: number[];
 }
 
-export interface Document {
-    id: string;
-    content: string;
-    embedding: number[];
-    metadata: Record<string, any>;
-    similarity?: number;
+export interface VectorDocument {
+  id: string;
+  content: string;
+  embedding: number[];
+  metadata: Record<string, any>;
+  similarity?: number;
 }

@@ -8,28 +8,38 @@ import { ModelSelector } from './agent/core/llm/modelSelector.js';
 async function main() {
     try {
         console.log('Starting SuperteamVN Assistant...');
-
         const prisma = new PrismaClient();
         const model = new ModelSelector(true);
-        
+
         console.log('Initializing services...');
-        
         await prisma.$connect();
         console.log('Database connected successfully');
 
         await model.initialize();
         console.log('AI model initialized successfully');
 
+        console.log('Initializing bot...');
         const bot = new SuperteamBot();
-        await bot.start();
-        console.log('Bot started successfully');
+        
+        try {
+            console.log('Attempting to start bot...');
+            await bot.start();
+            console.log('Bot started successfully!');
+            console.log('Bot username:', bot.botInfo?.username);
+        } catch (botError) {
+            console.error('Failed to start bot:', botError);
+            throw botError;
+        }
 
         setupMonitoring(prisma);
-
         setupShutdown(bot, prisma);
-
+        
+        console.log('System initialization complete!');
     } catch (error) {
         console.error('Initialization error:', error);
+        if (error instanceof Error) {
+            console.error('Error stack:', error.stack);
+        }
         await cleanup();
         process.exit(1);
     }
