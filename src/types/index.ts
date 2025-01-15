@@ -82,6 +82,7 @@ export interface ActivityLogInput {
 
 // Query-related types
 export interface QueryMetrics {
+    [key: string]: any;
     confidence: number;
     sources: string[];
     processingTime: number;

@@ -39,7 +39,7 @@ export class TwitterService {
     async followUser(username: string): Promise<void> {
         try {
             const user = await this.client.v2.userByUsername(username);
-            await this.client.v2.follow(user.data.id);
+            await this.client.v2.follow(user.data.id, user.data.id);
         } catch (error) {
             console.error('Error following user:', error);
             throw error;

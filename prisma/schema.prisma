@@ -13,9 +13,9 @@ datasource db {
 model Document {
     id        String   @id @default(cuid())
     content   String   @db.Text
-    embedding Unsupported("vector(1536)")
+    embedding Json
     metadata  Json
-    type      String
+    type      String   @default("document")
     status    String   @default("active")
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -33,10 +33,9 @@ model Member {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   
-  // Add these relation fields
-  projects      Project[]      // One member can have many projects
-  achievements  Achievement[]  // One member can have many achievements
-  contributions Contribution[] // One member can have many contributions
+  projects      Project[]
+  achievements  Achievement[]
+  contributions Contribution[]
 }
 
 model Project {
@@ -101,10 +100,12 @@ model Conversation {
 }
 
 model ContentSuggestion {
-  id        String   @id @default(cuid())
-  content   String
-  type      String
-  createdAt DateTime @default(now())
+    id          String   @id @default(cuid())
+    content     String
+    suggestions Json
+    type        String
+    metadata    Json?
+    createdAt   DateTime @default(now())
 }
 
 model ErrorLog {

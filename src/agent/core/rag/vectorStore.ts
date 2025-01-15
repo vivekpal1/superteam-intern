@@ -1,6 +1,6 @@
 // src/agent/core/rag/vectorStore.ts
-import { Prisma, PrismaClient } from '@prisma/client';
 import { EmbeddingGenerator } from './embeddings.js';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { VectorDocument } from '../../../types/vector-types.js';
 
 export class VectorStore {

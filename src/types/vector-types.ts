@@ -11,4 +11,6 @@ export interface VectorDocument {
   embedding: number[];
   metadata: Record<string, any>;
   similarity?: number;
+  type?: string;
+  status?: string;
 }

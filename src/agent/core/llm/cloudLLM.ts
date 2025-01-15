@@ -85,4 +85,14 @@ When uncertain, always acknowledge limitations and suggest alternatives or ask f
         const estimatedTokens = this.estimateTokenCount(this.systemPrompt + prompt);
         return estimatedTokens <= 4000;
     }
+
+    public async testConnection(): Promise<boolean> {
+        try {
+            await this.generateResponse("test");
+            return true;
+        } catch (error) {
+            console.error("LLM connection test failed:", error);
+            return false;
+        }
+    }
 }

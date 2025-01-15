@@ -9,6 +9,12 @@ interface TweetDraft {
     suggestions?: string[];
 }
 
+interface TweetResult {
+    success: boolean;
+    error?: string;
+    data?: any;
+}
+
 export class TweetManager {
     private twitter: TwitterApi;
     private prisma: PrismaClient;
@@ -56,32 +62,26 @@ export class TweetManager {
             const tweet = await this.prisma.tweet.findUnique({
                 where: { id: tweetId }
             });
-
+    
             if (!tweet) {
                 throw new Error('Tweet not found');
             }
-
-            if (tweet.status !== 'draft') {
-                throw new Error('Tweet is not in draft status');
-            }
-
-            // Post to Twitter
-            const result = await this.twitter.v2.tweet(tweet.content);
-
-            // Update database
+    
+            const metadata = typeof tweet.metadata === 'string' 
+                ? JSON.parse(tweet.metadata)
+                : tweet.metadata;
+    
             await this.prisma.tweet.update({
                 where: { id: tweetId },
                 data: {
                     status: 'posted',
                     postedAt: new Date(),
                     metadata: {
-                        ...tweet.metadata,
-                        twitterId: result.data.id
-                    }
+                        ...metadata,
+                        twitterId: result.data.id,
+                    } as unknown as Prisma.JsonValue
                 }
             });
-
-            return result;
         } catch (error) {
             console.error('Error approving tweet:', error);
             throw error;

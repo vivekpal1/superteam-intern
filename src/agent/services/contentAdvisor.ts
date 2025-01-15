@@ -83,12 +83,12 @@ export class ContentAdvisor {
     await this.prisma.contentSuggestion.create({
       data: {
         content: original,
-        suggestions: JSON.stringify(suggestions),
         type: "tweet",
-        metadata: JSON.stringify({
+        suggestions: suggestions as unknown as Prisma.JsonValue,
+        metadata: {
           timestamp: new Date().toISOString(),
           platform: "twitter",
-        }),
+        } as unknown as Prisma.JsonValue,
       },
     });
   }

@@ -242,18 +242,18 @@ export class MemberFinder {
 
         if (member.achievements?.length > 0) {
             const relevantAchievement = member.achievements
-                .find(a => query.skills?.some(skill => 
-                    a.description.toLowerCase().includes(skill.toLowerCase())
-                ));
+            .find((a: Achievement) => query.skills?.some((skill: string) =>
+                a.description.toLowerCase().includes(skill.toLowerCase())
+            ))
             if (relevantAchievement) {
                 reasons.push(`Has relevant achievement: ${relevantAchievement.description}`);
             }
         }
 
         const relevantContributions = member.contributions
-            .filter(c => query.skills?.some(skill => 
-                c.description.toLowerCase().includes(skill.toLowerCase())
-            ))
+        .filter((c: Contribution) => query.skills?.some((skill: string) =>
+            c.description.toLowerCase().includes(skill.toLowerCase())
+        ))
             .length;
         if (relevantContributions > 0) {
             reasons.push(`Has ${relevantContributions} relevant contributions to the ecosystem`);
