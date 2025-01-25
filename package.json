@@ -17,7 +17,14 @@
     "start": "node --experimental-specifier-resolution=node dist/index.js",
     "mai": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --config=jest.config.cjs"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --config=jest.config.cjs",
+    "setup-vector": "tsx prisma/helpers/setup-vector-index.ts",
+    "db:setup": "pnpm prisma generate && pnpm prisma migrate deploy && tsx prisma/helpers/setup-database.ts",
+    "db:reset": "pnpm db:clean && pnpm db:setup",
+    "db:clean": "tsx scripts/clean-database.ts",
+    "start:bot": "tsx scripts/start-bot.ts",
+    "test:bot": "tsx scripts/test-bot.ts",
+    "knowledge:validate": "tsx scripts/validate-knowledge.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
@@ -55,16 +62,19 @@
     "tailwindcss-animate": "^1.0.7",
     "telegraf": "^4.16.3",
     "twitter-api-v2": "^1.19.0",
+    "winston": "^3.17.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/glob": "^8.1.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
     "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.1.4",
+    "glob": "^11.0.1",
     "postcss": "^8",
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.9",

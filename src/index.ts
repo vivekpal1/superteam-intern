@@ -1,58 +1,95 @@
 // src/index.ts
-import { SuperteamBot } from './telegram/bot.js';
+import { SuperteamBot } from './telegram/bot/index.js';
 import { config } from './config/index.js';
 import { PrismaClient } from '@prisma/client';
-import { TweetManager } from './agent/services/tweetManager.js';
+import { initializeServices } from './telegram/bot/services/initializeServices.js';
 import { ModelSelector } from './agent/core/llm/modelSelector.js';
 
-// Initialize global services
+// Initialize core services that will be used throughout the application
 const prisma = new PrismaClient();
-const model = new ModelSelector(true);
+const model = new ModelSelector(true); // true enables debug mode
 
+/**
+ * Main application entry point that handles initialization of all core services
+ * and starts the Telegram bot with proper error handling and monitoring.
+ */
 async function main() {
     try {
         console.log('Starting SuperteamVN Assistant...');
 
-        // First, initialize core services
+        // First phase: Initialize core database and AI services
         console.log('Initializing core services...');
-        await prisma.$connect();
-        console.log('Database connected successfully');
+        await initializeCoreServices();
 
-        await model.initialize();
-        console.log('AI model initialized successfully');
-
-        // Then initialize and start the bot
+        // Second phase: Set up and start the bot
         console.log('Initializing bot...');
-        const bot = new SuperteamBot(true); // Pass true for debug mode
-        
-        try {
-            console.log('Starting bot...');
-            await bot.start();
-            console.log('Bot started successfully!');
-        } catch (botError) {
-            console.error('Failed to start bot:', botError);
-            throw botError;
-        }
+        const bot = await initializeBot();
 
-        // Set up monitoring and shutdown handlers
-        setupMonitoring(prisma);
-        setupShutdown(bot, prisma);
+        // Third phase: Set up monitoring and graceful shutdown
+        setupSystemMonitoring();
+        setupGracefulShutdown(bot);
         
         console.log('System initialization complete');
     } catch (error) {
-        console.error('Fatal initialization error:', error);
-        if (error instanceof Error) {
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack
-            });
-        }
-        await cleanup();
-        process.exit(1);
+        await handleFatalError(error);
     }
 }
 
-function setupMonitoring(prisma: PrismaClient) {
+/**
+ * Initializes core services like database and AI model
+ */
+async function initializeCoreServices() {
+    try {
+        // Initialize database connection
+        await prisma.$connect();
+        console.log('Database connected successfully');
+
+        // Initialize AI model
+        await model.initialize();
+        console.log('AI model initialized successfully');
+
+        // Initialize other services
+        const services = await initializeServices();
+        console.log('All services initialized successfully');
+
+        return services;
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            throw new Error(`Failed to initialize core services: ${error.message}`);
+        } else {
+            throw new Error('Failed to initialize core services: Unknown error');
+        }
+    }
+}
+
+/**
+ * Initializes and starts the Telegram bot
+ */
+async function initializeBot() {
+    // Create bot instance with required configuration
+    const bot = new SuperteamBot({
+        debugMode: true,
+        adminIds: new Set([/* Add admin Telegram IDs */]),
+        TELEGRAM_BOT_TOKEN: config.TELEGRAM_BOT_TOKEN,
+        handlerTimeout: 90000,
+    }, await initializeServices());
+
+    try {
+        console.log('Starting bot...');
+        await bot.start();
+        console.log('Bot started successfully!');
+        return bot;
+    } catch (error) {
+        console.error('Failed to start bot:', error);
+        throw error;
+    }
+}
+
+/**
+ * Sets up system monitoring for database connectivity and memory usage
+ */
+function setupSystemMonitoring() {
+    // Monitor database connection
     setInterval(async () => {
         try {
             await prisma.$queryRaw`SELECT 1`;
@@ -62,6 +99,7 @@ function setupMonitoring(prisma: PrismaClient) {
         }
     }, 60000); // Check every minute
 
+    // Monitor memory usage
     setInterval(() => {
         const used = process.memoryUsage();
         console.log('Memory usage:', {
@@ -71,7 +109,10 @@ function setupMonitoring(prisma: PrismaClient) {
     }, 300000); // Log every 5 minutes
 }
 
-function setupShutdown(bot: SuperteamBot, prisma: PrismaClient) {
+/**
+ * Sets up graceful shutdown handlers for clean process termination
+ */
+function setupGracefulShutdown(bot: SuperteamBot) {
     async function shutdown(signal: string) {
         console.log(`${signal} signal received. Starting graceful shutdown...`);
         
@@ -90,15 +131,34 @@ function setupShutdown(bot: SuperteamBot, prisma: PrismaClient) {
     process.once('SIGTERM', () => shutdown('SIGTERM'));
 }
 
+/**
+ * Handles cleanup of resources during error scenarios
+ */
 async function cleanup() {
     try {
-        const prisma = new PrismaClient();
         await prisma.$disconnect();
+        console.log('Cleanup completed successfully');
     } catch (error) {
         console.error('Cleanup error:', error);
     }
 }
 
+/**
+ * Handles fatal errors with proper logging and cleanup
+ */
+async function handleFatalError(error: any) {
+    console.error('Fatal initialization error:', error);
+    if (error instanceof Error) {
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
+    }
+    await cleanup();
+    process.exit(1);
+}
+
+// Set up global error handlers
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     cleanup().then(() => process.exit(1));
@@ -109,6 +169,7 @@ process.on('unhandledRejection', (error) => {
     cleanup().then(() => process.exit(1));
 });
 
+// Start the application
 main().catch(async (error) => {
     console.error('Fatal error:', error);
     await cleanup();

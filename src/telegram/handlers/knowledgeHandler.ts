@@ -9,6 +9,9 @@ import { QueryMetrics, ErrorLogInput, ActivityLogInput } from '../../types/index
 import { VectorDocument } from '../../types/vector-types.js';
 
 export class KnowledgeHandler {
+    improveTweet(content: string): string[] | PromiseLike<string[]> {
+        throw new Error('Method not implemented.');
+    }
     private rateLimiter: RateLimiter;
     private vectorStore: VectorStore;
     private model: ModelSelector;
@@ -256,5 +259,15 @@ ${query}
 
 If you can't answer the question based on the context, say so. Do not make up information.
 Answer:`;
+    }
+
+    async approveContent(contentId: string): Promise<{ success: boolean; error?: string; tweetUrl?: string }> {
+        // Implementation
+        return { success: true };
+    }
+
+    async searchMembers(query: string): Promise<any[]> {
+        // Implementation
+        return [];
     }
 }

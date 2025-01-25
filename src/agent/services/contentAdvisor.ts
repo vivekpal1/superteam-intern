@@ -1,6 +1,6 @@
 // src/agent/services/contentAdvisor.ts
 import { ModelSelector } from "../core/llm/modelSelector.js";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 export class ContentAdvisor {
   private model: ModelSelector;
@@ -81,17 +81,17 @@ export class ContentAdvisor {
 
   private async storeSuggestion(original: string, suggestions: string[]) {
     await this.prisma.contentSuggestion.create({
-      data: {
-        content: original,
-        type: "tweet",
-        suggestions: suggestions as unknown as Prisma.JsonValue,
-        metadata: {
-          timestamp: new Date().toISOString(),
-          platform: "twitter",
-        } as unknown as Prisma.JsonValue,
-      },
+        data: {
+            content: original,
+            type: "tweet",
+            suggestions: JSON.stringify(suggestions) as Prisma.InputJsonValue,
+            metadata: JSON.stringify({
+                timestamp: new Date().toISOString(),
+                platform: "twitter",
+            }) as Prisma.InputJsonValue,
+        },
     });
-  }
+}
 
   async analyzeTweetPerformance(tweetId: string) {
     // tweet performance analysis

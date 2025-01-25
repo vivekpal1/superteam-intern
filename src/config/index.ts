@@ -23,6 +23,7 @@ const envSchema = z.object({
     CROSSMINT_PROJECT_ID: z.string().min(1, "Crossmint project ID is required"),
     
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 
 function validateEnv() {

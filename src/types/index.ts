@@ -1,5 +1,8 @@
 // src/types/index.ts
-import { Prisma } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client'
+
+export { Prisma }
+
 
 // Core document types
 export interface Document {
@@ -14,15 +17,14 @@ export interface Document {
     updatedAt: Date;
 }
 
-// Member-related types
 export interface Member {
     id: string;
     name: string;
     skills: string[];
     experience: string;
     bio: string;
-    twitterHandle?: string;
-    githubHandle?: string;
+    twitterHandle: string | null;
+    githubHandle: string | null;
     contact: string;
     projects: Project[];
     achievements: Achievement[];
@@ -39,7 +41,7 @@ export interface Project {
     skills: string[];
     memberId: string;
     startDate: Date;
-    endDate?: Date;
+    endDate: Date | null;
     status: string;
     createdAt: Date;
     updatedAt: Date;
@@ -52,7 +54,7 @@ export interface Achievement {
     date: Date;
     memberId: string;
     type: string;
-    proof?: string;
+    proof: string | null;
     createdAt: Date;
 }
 
@@ -62,11 +64,16 @@ export interface Contribution {
     date: Date;
     memberId: string;
     type: string;
-    url?: string;
+    url: string | null;
     createdAt: Date;
 }
 
-// Log-related types
+export interface MemberMatch {
+    member: Member;
+    matchScore: number;
+    matchReason: string[];
+}
+
 export interface ErrorLogInput {
     type: string;
     error: string;
@@ -80,12 +87,11 @@ export interface ActivityLogInput {
     metadata?: Prisma.JsonValue;
 }
 
-// Query-related types
 export interface QueryMetrics {
-    [key: string]: any;
     confidence: number;
     sources: string[];
     processingTime: number;
+    [key: string]: any;
 }
 
 export interface SearchQuery {
@@ -94,3 +100,15 @@ export interface SearchQuery {
     threshold?: number;
     limit?: number;
 }
+
+export function isPrismaMember(obj: any): obj is Member {
+    return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        'id' in obj &&
+        'name' in obj &&
+        Array.isArray(obj.skills)
+    );
+}
+
+export * from '../agent/services/types.js';

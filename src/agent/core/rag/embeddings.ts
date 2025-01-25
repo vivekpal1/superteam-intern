@@ -1,8 +1,9 @@
 // src/agent/core/rag/embeddings.ts
 import { OpenAIEmbeddings } from "@langchain/openai";
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
+import { OllamaEmbeddings, HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 
 export class EmbeddingGenerator {
+    private ollamaEmbeddings: OllamaEmbeddings;
     private openAIEmbeddings: OpenAIEmbeddings;
     private localEmbeddings: HuggingFaceInferenceEmbeddings;
     private readonly useLocal: boolean;

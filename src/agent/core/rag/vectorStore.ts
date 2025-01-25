@@ -12,8 +12,15 @@ export class VectorStore {
         this.embeddings = new EmbeddingGenerator();
     }
 
-    // Transform a Prisma document into our VectorDocument type
-    private transformToVectorDocument(doc: any): VectorDocument {
+    private async executeSingleRowQuery<T>(query: Promise<T[]>): Promise<T> {
+        const result = await query;
+        if (!result || result.length === 0) {
+            throw new Error('Query returned no results');
+        }
+        return result[0];
+    }
+
+    private transformToVectorDocument(doc: Record<string, any>): VectorDocument {
         return {
             id: doc.id,
             content: doc.content,
@@ -31,15 +38,30 @@ export class VectorStore {
         try {
             const embedding = await this.embeddings.generateEmbedding(content);
             
-            const document = await this.prisma.document.create({
-                data: {
-                    content,
-                    embedding: embedding as unknown as Prisma.JsonValue,
-                    metadata: metadata as Prisma.JsonValue,
-                    type: 'document',
-                    status: 'active'
-                }
-            });
+            const document = await this.executeSingleRowQuery(
+                this.prisma.$queryRaw<VectorDocument[]>`
+                    INSERT INTO "Document" (
+                        id,
+                        content,
+                        embedding,
+                        metadata,
+                        type,
+                        status,
+                        "createdAt",
+                        "updatedAt"
+                    ) VALUES (
+                        gen_random_uuid(),
+                        ${content},
+                        ${embedding}::vector,
+                        ${JSON.stringify(metadata)}::jsonb,
+                        'document',
+                        'active',
+                        CURRENT_TIMESTAMP,
+                        CURRENT_TIMESTAMP
+                    )
+                    RETURNING *
+                `
+            );
 
             return this.transformToVectorDocument(document);
         } catch (error) {
@@ -76,15 +98,30 @@ export class VectorStore {
 
     async createDocument(content: string, data: { embedding: number[]; metadata: any }): Promise<VectorDocument> {
         try {
-            const document = await this.prisma.document.create({
-                data: {
-                    content,
-                    embedding: data.embedding as unknown as Prisma.JsonValue,
-                    metadata: JSON.stringify(data.metadata),
-                    type: 'document',
-                    status: 'active'
-                }
-            });
+            const document = await this.executeSingleRowQuery(
+                this.prisma.$queryRaw<VectorDocument[]>`
+                    INSERT INTO "Document" (
+                        id,
+                        content,
+                        embedding,
+                        metadata,
+                        type,
+                        status,
+                        "createdAt",
+                        "updatedAt"
+                    ) VALUES (
+                        gen_random_uuid(),
+                        ${content},
+                        ${data.embedding}::vector,
+                        ${JSON.stringify(data.metadata)}::jsonb,
+                        'document',
+                        'active',
+                        CURRENT_TIMESTAMP,
+                        CURRENT_TIMESTAMP
+                    )
+                    RETURNING *
+                `
+            );
 
             return this.transformToVectorDocument(document);
         } catch (error) {

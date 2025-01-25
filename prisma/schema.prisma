@@ -2,6 +2,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -13,7 +14,7 @@ datasource db {
 model Document {
     id        String   @id @default(cuid())
     content   String   @db.Text
-    embedding Json
+    embedding Unsupported("vector(1536)")
     metadata  Json
     type      String   @default("document")
     status    String   @default("active")
