@@ -1,9 +1,10 @@
 // scripts/start-bot.ts
-import { SuperteamBot } from '../src/telegram/bot.js';
+import { SuperteamBot } from '../src/telegram/bot/index.js';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs/promises';
+import { initializeServices } from '../src/telegram/bot/services/initializeServices.js';
 
 dotenv.config();
 
@@ -55,7 +56,12 @@ async function startBot() {
         
         await loadKnowledgeBase();
         
-        const bot = new SuperteamBot(true);
+        const bot = new SuperteamBot({
+            TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
+            debugMode: true,
+            adminIds: new Set([]),
+            handlerTimeout: 90000
+        }, await initializeServices());
         await bot.start();
         
         console.log('Bot started successfully! Press Ctrl+C to stop.');
