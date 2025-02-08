@@ -10,14 +10,14 @@ interface RetrievalResult {
     confidence: number;
 }
 
-export class DocumentRetriever {
+export class Retriever {
     private vectorStore: VectorStore;
     private embeddings: EmbeddingGenerator;
     private prisma: PrismaClient;
 
     constructor() {
         this.vectorStore = new VectorStore();
-        this.embeddings = new EmbeddingGenerator(true);
+        this.embeddings = new EmbeddingGenerator();
         this.prisma = new PrismaClient();
     }
 

@@ -7,33 +7,25 @@ import { BotConfig } from '../types/index.js';
  * The command output is customized based on whether the user is an admin or not.
  */
 export function createHelpCommand(config: BotConfig) {
-    return async (ctx: Context): Promise<void> => {
-        const isAdmin = config.adminIds.has(ctx.from?.id || 0);
-        
-        const message = `
-Available Commands:
+    return async (ctx: Context) => {
+        try {
+            console.log('[HelpCommand] Processing help command');
+            const message = `
+Available commands:
 
-📚 Knowledge Base
-/info <query> - Ask about SuperteamVN
-${isAdmin ? '/upload - Upload documents to train me' : ''}
+🚀 /start - Start the bot
+❓ /help - Show this help message
+🔍 /find - Search for members
+📝 /tweet - Create a tweet draft
+📅 /events - Show upcoming events
 
-👥 Team Members
-/find <skills> - Find team members
-Example: /find rust solana
+Need more help? Just ask!`;
 
-📱 Social Media
-/tweet <content> - Propose a tweet
-${isAdmin ? '/approve <id> - Approve tweet' : ''}
-
-🎯 Events & Opportunities
-/events - List upcoming events
-
-Need help? Just ask me anything!`;
-
-        await ctx.reply(message);
-        
-        if (config.debugMode) {
-            console.log(`[Bot] Sent help message to user ${ctx.from?.id}`);
+            await ctx.reply(message);
+            console.log('[HelpCommand] Help message sent');
+        } catch (error) {
+            console.error('[HelpCommand] Error:', error);
+            await ctx.reply('Sorry, there was an error showing help. Please try again.');
         }
     };
 }

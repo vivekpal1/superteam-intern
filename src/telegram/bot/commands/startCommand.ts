@@ -7,22 +7,22 @@ import { BotConfig } from '../types/index.js';
  * This is typically the first interaction a user has with the bot.
  */
 export function createStartCommand(config: BotConfig) {
-    return async (ctx: Context): Promise<void> => {
-        const message = `
-Hello! 👋 I'm Mai, the SuperteamVN intern assistant.
-
-I can help you with:
-- Finding SuperteamVN information 📚
-- Connecting with team members 👥
-- Managing social media content 📱
-- Tracking events and opportunities 🎯
-
-Use /help to see all available commands!`;
-
-        await ctx.reply(message);
-        
-        if (config.debugMode) {
-            console.log(`[Bot] Started conversation with user ${ctx.from?.id}`);
+    return async (ctx: Context) => {
+        console.log('[StartCommand] Handler called');
+        try {
+            const message = `👋 Welcome to Superteam VN Assistant!\n\nI'm here to help you with various tasks. Here are some things I can do:\n\n- /help - Show available commands\n- /find - Search for members\n- /events - Show upcoming events\n- /tweet - Create a tweet draft\n\nFeel free to ask me anything!`;
+            
+            console.log('[StartCommand] Sending welcome message');
+            const sent = await ctx.reply(message);
+            console.log('[StartCommand] Message sent:', sent.message_id);
+            
+        } catch (error) {
+            console.error('[StartCommand] Error:', error);
+            try {
+                await ctx.reply('Sorry, there was an error starting the bot. Please try again.');
+            } catch (replyError) {
+                console.error('[StartCommand] Failed to send error message:', replyError);
+            }
         }
     };
 }

@@ -5,9 +5,8 @@ import { PrismaClient } from '@prisma/client';
 import { initializeServices } from './telegram/bot/services/initializeServices.js';
 import { ModelSelector } from './agent/core/llm/modelSelector.js';
 
-// Initialize core services that will be used throughout the application
 const prisma = new PrismaClient();
-const model = new ModelSelector(true); // true enables debug mode
+const model = new ModelSelector(true);
 
 /**
  * Main application entry point that handles initialization of all core services
@@ -16,17 +15,13 @@ const model = new ModelSelector(true); // true enables debug mode
 async function main() {
     try {
         console.log('Starting SuperteamVN Assistant...');
-
-        // First phase: Initialize core database and AI services
+        
         console.log('Initializing core services...');
         await initializeCoreServices();
 
-        // Second phase: Set up and start the bot
         console.log('Initializing bot...');
         const bot = await initializeBot();
-
-        // Third phase: Set up monitoring and graceful shutdown
-        setupSystemMonitoring();
+        
         setupGracefulShutdown(bot);
         
         console.log('System initialization complete');
@@ -40,20 +35,17 @@ async function main() {
  */
 async function initializeCoreServices() {
     try {
-        // Initialize database connection
         await prisma.$connect();
         console.log('Database connected successfully');
 
-        // Initialize AI model
         await model.initialize();
         console.log('AI model initialized successfully');
 
-        // Initialize other services
         const services = await initializeServices();
         console.log('All services initialized successfully');
 
         return services;
-    } catch (error: unknown) {
+    } catch (error) {
         if (error instanceof Error) {
             throw new Error(`Failed to initialize core services: ${error.message}`);
         } else {
@@ -66,21 +58,22 @@ async function initializeCoreServices() {
  * Initializes and starts the Telegram bot
  */
 async function initializeBot() {
-    // Create bot instance with required configuration
+    const services = await initializeServices();
+    
     const bot = new SuperteamBot({
         debugMode: true,
-        adminIds: new Set([/* Add admin Telegram IDs */]),
+        adminIds: new Set([]),
         TELEGRAM_BOT_TOKEN: config.TELEGRAM_BOT_TOKEN,
         handlerTimeout: 90000,
-    }, await initializeServices());
+    }, services);
 
     try {
-        console.log('Starting bot...');
         await bot.start();
         console.log('Bot started successfully!');
         return bot;
     } catch (error) {
         console.error('Failed to start bot:', error);
+        await bot.stop();
         throw error;
     }
 }
@@ -97,7 +90,7 @@ function setupSystemMonitoring() {
             console.error('Database connection lost:', error);
             process.exit(1);
         }
-    }, 60000); // Check every minute
+    }, 60000);
 
     // Monitor memory usage
     setInterval(() => {

@@ -7,25 +7,106 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { RateLimiter } from '../../utils/rateLimiter.js';
 import { QueryMetrics, ErrorLogInput, ActivityLogInput } from '../../types/index.js';
 import { VectorDocument } from '../../types/vector-types.js';
+import { SearchResult } from '../../types/search-types.js';
+import fs from 'fs/promises';
 
 export class KnowledgeHandler {
-    improveTweet(content: string): string[] | PromiseLike<string[]> {
-        throw new Error('Method not implemented.');
-    }
     private rateLimiter: RateLimiter;
     private vectorStore: VectorStore;
     private model: ModelSelector;
     private prisma: PrismaClient;
     private adminIds: Set<string>;
+    private initialized: boolean = false;
     private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
     private readonly allowedFileTypes = new Set(['pdf', 'docx', 'txt']);
 
     constructor(adminIds: string[] = []) {
+        this.rateLimiter = new RateLimiter();
         this.vectorStore = new VectorStore();
         this.model = new ModelSelector(true);
         this.prisma = new PrismaClient();
         this.adminIds = new Set(adminIds);
-        this.rateLimiter = new RateLimiter();
+    }
+
+    async initialize() {
+        if (!this.initialized) {
+            await this.model.initialize();
+            this.initialized = true;
+        }
+    }
+
+    async improveTweet(content: string): Promise<string[]> {
+        try {
+            if (!this.initialized) {
+                await this.initialize();
+            }
+
+            // Default context about Superteam VN
+            const defaultContext = `
+Superteam VN is a community of builders, creators, and contributors in Vietnam's Web3 ecosystem.
+We focus on:
+- Building and growing the Web3 ecosystem
+- Supporting talented developers and creators
+- Fostering collaboration and innovation
+- Creating opportunities for community members
+`;
+
+            console.log('[KnowledgeHandler] Improving tweet:', content);
+            
+            const prompt = `Using this context about Superteam VN:
+${defaultContext}
+
+Write 3 engaging and professional tweets about: "${content}"
+
+Requirements:
+- Each tweet must start with a number and emoji (1. 🚀, 2. ✨, 3. 🌟)
+- Make it exciting and welcoming
+- Include #SuperteamVN hashtag
+- Keep under 280 characters
+- Focus on community value
+
+Example format:
+1. 🚀 Thrilled to welcome @username to Superteam VN! Bringing amazing talent to our ecosystem. Let's build together! #SuperteamVN
+2. ✨ Our community grows stronger! Amazing minds joining Superteam VN. Stay tuned for more! #SuperteamVN
+3. 🌟 Big news for Superteam VN! Welcoming new builders to our family. The future is bright! #SuperteamVN
+
+Generate 3 unique, contextual tweets:`;
+
+            // Use the model to generate suggestions
+            const response = await this.model.generateResponse(prompt);
+            console.log('[KnowledgeHandler] Raw LLM response:', response);
+
+            // Process and validate tweets
+            const suggestions = response
+                .split('\n')
+                .filter(line => /^[1-3]\./.test(line))
+                .map(line => line.replace(/^[1-3]\.\s*/, '').trim())
+                .filter(tweet => 
+                    tweet.length > 0 && 
+                    tweet.length <= 280 && 
+                    tweet.includes('#SuperteamVN') &&
+                    (tweet.includes('🚀') || tweet.includes('✨') || tweet.includes('🌟'))
+                );
+
+            if (suggestions.length >= 3) {
+                return suggestions.slice(0, 3);
+            }
+
+            // If we don't get valid suggestions, create contextual fallbacks
+            return [
+                `🚀 Exciting news! ${content} joining Superteam VN! Together, we'll build amazing things in the Web3 space. #SuperteamVN`,
+                `✨ The Superteam VN family grows stronger! Welcoming ${content} to our vibrant community. #SuperteamVN`,
+                `🌟 New builders alert! ${content} bringing fresh energy to Superteam VN. Let's create magic! #SuperteamVN`
+            ];
+
+        } catch (error) {
+            console.error('[KnowledgeHandler] Error improving tweet:', error);
+            return [
+                `🚀 ${content} #SuperteamVN`,
+                `✨ ${content} #SuperteamVN`,
+                `🌟 ${content} #SuperteamVN`
+            ];
+        }
     }
 
     async handleDocument(ctx: Context): Promise<void> {
@@ -269,5 +350,15 @@ Answer:`;
     async searchMembers(query: string): Promise<any[]> {
         // Implementation
         return [];
+    }
+
+    private async loadKnowledgeBase() {
+        try {
+            console.log('[KnowledgeHandler] Knowledge base loading skipped temporarily');
+            return true;
+        } catch (error) {
+            console.error('[KnowledgeHandler] Error loading knowledge base:', error);
+            return false;
+        }
     }
 }

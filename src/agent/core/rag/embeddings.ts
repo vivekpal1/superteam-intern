@@ -1,58 +1,58 @@
 // src/agent/core/rag/embeddings.ts
-import { OpenAIEmbeddings } from "@langchain/openai";
-import { OllamaEmbeddings, HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
+import OpenAI from 'openai';
 
 export class EmbeddingGenerator {
-    private ollamaEmbeddings: OllamaEmbeddings;
-    private openAIEmbeddings: OpenAIEmbeddings;
-    private localEmbeddings: HuggingFaceInferenceEmbeddings;
-    private readonly useLocal: boolean;
+    private openai: OpenAI;
+    private model: string = 'text-embedding-ada-002'; // This model generates 1536 dimensions
 
-    constructor(useLocal = true) {
-        this.useLocal = useLocal;
-        this.localEmbeddings = new HuggingFaceInferenceEmbeddings({
-            model: "sentence-transformers/all-MiniLM-L6-v2"
+    constructor() {
+        this.openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
         });
-        this.openAIEmbeddings = new OpenAIEmbeddings();
     }
 
     async generateEmbedding(text: string): Promise<number[]> {
         try {
-            if (this.useLocal) {
-                const embedding = await this.localEmbeddings.embedQuery(text);
-                return embedding;
-            } else {
-                const embedding = await this.openAIEmbeddings.embedQuery(text);
-                return embedding;
+            const response = await this.openai.embeddings.create({
+                model: this.model,
+                input: text,
+                encoding_format: 'float',
+            });
+
+            if (!response.data[0].embedding) {
+                throw new Error('No embedding generated');
             }
+
+            return response.data[0].embedding;
         } catch (error) {
-            console.error('Error generating embedding:', error);
-            if (this.useLocal) {
-                console.log('Falling back to OpenAI embeddings...');
-                return await this.openAIEmbeddings.embedQuery(text);
-            }
-            throw error;
+            console.error('[EmbeddingGenerator] Error generating embedding:', error);
+            // Return a zero vector of correct dimension as fallback
+            return new Array(1536).fill(0);
         }
     }
 
     async generateBatchEmbeddings(texts: string[]): Promise<number[][]> {
         try {
-            if (this.useLocal) {
-                return await this.localEmbeddings.embedDocuments(texts);
-            } else {
-                return await this.openAIEmbeddings.embedDocuments(texts);
-            }
+            const response = await this.openai.embeddings.create({
+                model: this.model,
+                input: texts,
+                encoding_format: 'float',
+            });
+
+            return response.data.map(item => item.embedding);
         } catch (error) {
-            console.error('Error generating batch embeddings:', error);
-            if (this.useLocal) {
-                return await this.openAIEmbeddings.embedDocuments(texts);
-            }
-            throw error;
+            console.error('[EmbeddingGenerator] Error generating batch embeddings:', error);
+            return texts.map(() => new Array(1536).fill(0));
         }
+    }
+
+    getTokenCount(text: string): number {
+        // Simple estimation: ~4 characters per token
+        return Math.ceil(text.length / 4);
     }
 }
 
 export async function createEmbedding(text: string): Promise<number[]> {
-    const generator = new EmbeddingGenerator(true);
+    const generator = new EmbeddingGenerator();
     return generator.generateEmbedding(text);
 }

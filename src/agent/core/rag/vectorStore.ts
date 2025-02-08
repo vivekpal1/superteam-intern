@@ -2,6 +2,7 @@
 import { EmbeddingGenerator } from './embeddings.js';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { VectorDocument } from '../../../types/vector-types.js';
+import { SearchResult } from '../../../types/search-types.js';
 
 export class VectorStore {
     private prisma: PrismaClient;
@@ -147,5 +148,31 @@ export class VectorStore {
         });
 
         return documents.map(doc => this.transformToVectorDocument(doc));
+    }
+
+    async searchDocuments(query: string, limit: number = 2): Promise<SearchResult[]> {
+        try {
+            const queryEmbedding = await this.embeddings.generateEmbedding(query);
+            
+            const documents = await this.prisma.$queryRaw`
+                SELECT 
+                    content,
+                    metadata,
+                    1 - (embedding <=> ${queryEmbedding}::vector) as score
+                FROM "Document"
+                WHERE status = 'active'
+                ORDER BY score DESC
+                LIMIT ${limit}
+            `;
+
+            return (documents as any[]).map(doc => ({
+                content: doc.content,
+                metadata: doc.metadata,
+                score: doc.score
+            }));
+        } catch (error) {
+            console.error('[VectorStore] Search error:', error);
+            return [];
+        }
     }
 }
